@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Background audio player (looping)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 2rem; }
+    .controls { margin-top: 1rem; }
+    button { padding: 0.5rem 1rem; font-size: 1rem; }
+    .hint { color: #555; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>Background audio player (looping)</h1>
+
+  <p>This page demonstrates a simple looping background audio player that will repeat the audio while the page is open and stop when the page is closed or navigated away from. Modern browsers may block autoplay with sound — use the Play button if playback is prevented.</p>
+
+  <audio id="bg-audio" loop preload="auto">
+    <!-- Replace the src value below with an existing file in this repo or an external URL -->
+    <source src="/assets/bg.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <div class="controls">
+    <button id="play-btn" aria-pressed="false">Play background audio</button>
+    <button id="stop-btn" style="display:none" aria-pressed="true">Stop</button>
+    <div class="hint">Tip: If autoplay is blocked, click <strong>Play background audio</strong>.</div>
+  </div>
+
+  <script>
+    (function () {
+      const audio = document.getElementById('bg-audio');
+      const playBtn = document.getElementById('play-btn');
+      const stopBtn = document.getElementById('stop-btn');
+
+      function setPlayingUI(isPlaying) {
+        if (isPlaying) {
+          playBtn.style.display = 'none';
+          stopBtn.style.display = 'inline-block';
+          playBtn.setAttribute('aria-pressed', 'true');
+          stopBtn.setAttribute('aria-pressed', 'false');
+        } else {
+          playBtn.style.display = 'inline-block';
+          stopBtn.style.display = 'none';
+          playBtn.setAttribute('aria-pressed', 'false');
+          stopBtn.setAttribute('aria-pressed', 'true');
+        }
+      }
+
+      // Try to autoplay once (may be blocked)
+      audio.play().then(() => {
+        setPlayingUI(true);
+      }).catch(() => {
+        // Autoplay blocked — show Play button (already visible by default)
+      });
+
+      playBtn.addEventListener('click', async () => {
+        try {
+          await audio.play();
+          setPlayingUI(true);
+          localStorage.setItem('bg-audio-playing', 'true');
+        } catch (err) {
+          console.warn('Playback failed:', err);
+        }
+      });
+
+      stopBtn.addEventListener('click', () => {
+        audio.pause();
+        audio.currentTime = 0;
+        setPlayingUI(false);
+        localStorage.setItem('bg-audio-playing', 'false');
+      });
+
+      // If user previously allowed playback, try again on load
+      if (localStorage.getItem('bg-audio-playing') === 'true') {
+        audio.play().then(() => setPlayingUI(true)).catch(() => {
+          // still blocked
+        });
+      }
+
+      // Try to resume when the page becomes visible again (useful after tab switching)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          audio.play().catch(() => {});
+        }
+      });
+
+      // Pause on unload (not strictly required but tidy)
+      window.addEventListener('beforeunload', () => {
+        audio.pause();
+      });
+    })();
+  </script>
+</body>
+</html>
